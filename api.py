@@ -8,14 +8,20 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 import numpy as np
+import time
 
 
 app = Flask(__name__)
 
 ####### PUT YOUR INFORMATION HERE #######
 CAPTAIN_EMAIL = 'mickey23405383@gmail.com'          #
-SALT = 'my_salt'                        #
+SALT = 'ntustntustntust'                        #
 #########################################
+
+# verification mickey23405383@gmail.com 437292 http://140.118.47.155:8080
+# get_status mickey23405383@gmail.com 437292
+
+
 
 
 def generate_server_uuid(input_string):
@@ -103,7 +109,8 @@ def inference():
     except Exception as e:
         # You can write some log...
         raise e
-    server_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # server_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    server_timestamp = int(time.time())
 
     return jsonify({'esun_uuid': data['esun_uuid'],
                     'server_uuid': server_uuid,
@@ -111,12 +118,39 @@ def inference():
                     'server_timestamp': server_timestamp})
 
 
+@app.route('/inference_testing', methods=['POST'])
+def inference_testing():
+    """ API that return your model predictions when E.SUN calls this API. """
+    data = request.get_json(force=True)
+
+    start_time = time.time()
+    # 取 image(base64 encoded) 並轉成 cv2 可用格式
+    image_64_encoded = data['image']
+    image = base64_to_binary_for_cv2(image_64_encoded)
+    
+    try:
+        answer = predict(image)
+    except TypeError as type_error:
+        # You can write some log...
+        raise type_error
+    except Exception as e:
+        # You can write some log...
+        raise e
+    
+    end_time = time.time()
+
+    return jsonify({
+        'answer': answer ,
+        'inference_time' : end_time - start_time
+    })
+
+
 if __name__ == "__main__":
     arg_parser = ArgumentParser(
         usage='Usage: python ' + __file__ + ' [--port <port>] [--help]'
     )
     arg_parser.add_argument('-p', '--port', default=8080, help='port')
-    arg_parser.add_argument('-d', '--debug', default=True, help='debug')
+    arg_parser.add_argument('-d', '--debug', default=False, help='debug')
     options = arg_parser.parse_args()
 
-    app.run(debug=options.debug, port=options.port)
+    app.run(host='0.0.0.0',debug=options.debug, port=options.port)
