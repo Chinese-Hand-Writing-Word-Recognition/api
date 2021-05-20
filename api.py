@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import base64
 import datetime
 import hashlib
-
+import os
 import cv2
 from flask import Flask
 from flask import request
@@ -69,6 +69,25 @@ def predict(image):
     ####################################################
     if _check_datatype_to_string(prediction):
         return prediction
+
+
+def logging(image_64_encoded, label=None):
+    date = datetime.datetime.today().strftime('%m_%d')
+    dir_path = os.path.join(os.getcwd(),'logs')
+    dir_path = os.path.join(dir_path,date)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    data_id = str(len(os.listdir(dir_path)))
+
+    imgdata = base64.b64decode(image_64_encoded)
+    if label:
+        filename = os.path.join(dir_path, data_id + '_' + label + '.jpg')  
+    else:
+        filename = os.path.join(dir_path, data_id + '.jpg')  
+    with open(filename, 'wb') as f:
+        f.write(imgdata)
+    
 
 
 def _check_datatype_to_string(prediction):
@@ -139,6 +158,7 @@ def inference_testing():
     
     end_time = time.time()
 
+    logging(image_64_encoded, answer)
     return jsonify({
         'answer': answer ,
         'inference_time' : end_time - start_time
@@ -149,7 +169,7 @@ if __name__ == "__main__":
     arg_parser = ArgumentParser(
         usage='Usage: python ' + __file__ + ' [--port <port>] [--help]'
     )
-    arg_parser.add_argument('-p', '--port', default=8080, help='port')
+    arg_parser.add_argument('-p', '--port', default=8787, help='port')
     arg_parser.add_argument('-d', '--debug', default=False, help='debug')
     options = arg_parser.parse_args()
 
