@@ -4,11 +4,16 @@ import datetime
 import hashlib
 import os
 import cv2
+from PIL import Image
+import pandas as pd
 from flask import Flask
 from flask import request
 from flask import jsonify
 import numpy as np
 import time
+import torch
+import torchvision.transforms as transforms
+from model import Classifier
 
 
 app = Flask(__name__)
@@ -21,6 +26,20 @@ SALT = 'ntustntustntust'                        #
 # verification mickey23405383@gmail.com 437292 http://140.118.47.155:8080
 # get_status mickey23405383@gmail.com 437292
 
+
+def get_label_map():
+    label2word = {}
+    map = pd.read_csv('./label_map.csv')
+    for idx,word in enumerate(map['Word']):
+        label2word[idx] = word
+    return label2word
+
+
+def load_model(model_path):
+    model = Classifier()
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
+    return model
 
 
 
@@ -62,8 +81,14 @@ def predict(image):
         prediction (str): a word.
     """
 
-    ####### PUT YOUR MODEL INFERENCING CODE HERE #######
-    prediction = '陳'
+    ####### PUT YOUR MODEL INFERENCING CODE HERE #######    
+    PIL_img = Image.fromarray(cv2.cvtColor(image , cv2.COLOR_BGR2RGB))
+    tfms = transforms.Compose([transforms.Resize((96, 96)), transforms.ToTensor()])
+    img = tfms(PIL_img).unsqueeze(0)
+    with torch.no_grad():
+        logits = model(img.to(device))
+    pred = torch.argmax(logits,dim=-1)
+    prediction =  label_map[pred.item()]
 
 
     ####################################################
@@ -130,6 +155,7 @@ def inference():
         raise e
     # server_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     server_timestamp = int(time.time())
+    logging(image_64_encoded, answer)
 
     return jsonify({'esun_uuid': data['esun_uuid'],
                     'server_uuid': server_uuid,
@@ -172,5 +198,12 @@ if __name__ == "__main__":
     arg_parser.add_argument('-p', '--port', default=8787, help='port')
     arg_parser.add_argument('-d', '--debug', default=False, help='debug')
     options = arg_parser.parse_args()
+
+    model_path = '/home/hello/api/models/CNN_1e2_SGD_256.ckpt'
+    model = load_model(model_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+
+    label_map = get_label_map()
 
     app.run(host='0.0.0.0',debug=options.debug, port=options.port)
