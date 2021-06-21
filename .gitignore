@@ -1,3 +1,5 @@
 logs/
+logs_test/
+*.zip
 models/
 __pycache__/
